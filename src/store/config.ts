@@ -1,0 +1,1 @@
+export const BASE_URL = 'https://watchit-test.clicksegypt.net/api'
