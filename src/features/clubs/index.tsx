@@ -131,9 +131,6 @@ const ClubModal = ({ club, onClose, onSave, mode }) => {
                       src={club.logo} 
                       alt={club.name}
                       className="max-w-[200px] max-h-[200px] object-contain"
-                      onError={(e) => {
-                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext fill="%239CA3AF" font-family="sans-serif" font-size="16" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Logo%3C/text%3E%3C/svg%3E';
-                      }}
                     />
                   </div>
                 </div>
@@ -197,9 +194,6 @@ const ClubModal = ({ club, onClose, onSave, mode }) => {
                         src={logoPreview} 
                         alt="Logo preview"
                         className="max-w-[200px] max-h-[200px] object-contain"
-                        onError={(e) => {
-                          e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23374151" width="200" height="200"/%3E%3Ctext fill="%239CA3AF" font-family="sans-serif" font-size="16" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3EInvalid Image%3C/text%3E%3C/svg%3E';
-                        }}
                       />
                     </div>
                   </div>
@@ -361,9 +355,6 @@ export default function ClubsManagement() {
                             src={club.logo} 
                             alt={club.name}
                             className="w-full h-full object-contain p-1"
-                            onError={(e) => {
-                              e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="48" height="48"%3E%3Crect fill="%23374151" width="48" height="48"/%3E%3Ctext fill="%239CA3AF" font-family="sans-serif" font-size="10" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Logo%3C/text%3E%3C/svg%3E';
-                            }}
                           />
                         </div>
                       </td>

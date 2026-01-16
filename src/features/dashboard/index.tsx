@@ -7,10 +7,6 @@ import {
   Trophy,
   MapPin,
   Shield,
-  TrendingUp,
-  User,
-  Globe,
-  Calendar,
   CheckCircle,
   Clock,
   XCircle,
@@ -27,8 +23,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line,
 } from 'recharts';
 
 // Static data for the dashboard
@@ -213,6 +207,7 @@ export default function Dashboard() {
             value={dashboardStats.totalStadiums}
             subtitle={`${dashboardStats.totalClubs} clubs registered`}
             icon={Building2}
+            trend
             variant="cyan"
           />
         </div>
@@ -224,6 +219,7 @@ export default function Dashboard() {
             value={dashboardStats.totalSuppliers}
             subtitle="Active suppliers"
             icon={Shield}
+            trend
             variant="yellow"
           />
           <StatsCard
@@ -231,6 +227,7 @@ export default function Dashboard() {
             value={dashboardStats.totalSports}
             subtitle="Available sports"
             icon={Trophy}
+            trend
             variant="purple"
           />
           <StatsCard
@@ -238,6 +235,7 @@ export default function Dashboard() {
             value={dashboardStats.totalClubs}
             subtitle="Registered clubs"
             icon={MapPin}
+            trend
             variant="blue"
           />
         </div>
@@ -257,7 +255,9 @@ export default function Dashboard() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ gender, percentage }) => `${gender}: ${percentage}%`}
+                  label={({ payload, percent }) =>
+                    `${payload.gender}: ${(percent * 100).toFixed(0)}%`
+                  }
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="count"
@@ -295,7 +295,7 @@ export default function Dashboard() {
               <p className="text-sm text-gray-400 mt-1">Top 5 countries</p>
             </div>
             <div className="space-y-4">
-              {dashboardStats.usersByCountry.map((item, index) => {
+              {dashboardStats.usersByCountry.map((item) => {
                 const percentage = ((item.count / dashboardStats.totalUsers) * 100).toFixed(1);
                 return (
                   <div key={item.country}>

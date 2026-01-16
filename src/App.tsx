@@ -14,7 +14,6 @@ import EditCategoryPage from "./features/faqs/categories/components/EditCategory
 import CreateFaqPage from "./features/faqs/CreateFaq";
 import EditFaqPage from "./features/faqs/EditFaq";
 import UsersPage from "./features/users";
-import UserProfilePage from "./features/users/UserProfile";
 import EditProfilePage from "./pages/Profile/EditProfile";
 import ChangePasswordPage from "./pages/Profile/ChangePassword";
 import ContactMessagesPage from "./components/contactMessages";
@@ -62,7 +61,6 @@ export default function App() {
             <Route path="/clubs" element={<ClubsManagement />} /> 
             <Route path="/tickets" element={<TicketsManagement />} /> 
             <Route path="/booking-requests" element={<BookingRequestsManagement />} /> 
-            <Route path="/users/profile/:id" element={<UserProfilePage />} /> 
             <Route path="/profile/edit" element={<EditProfilePage />} />
             <Route path="/profile/change-password" element={<ChangePasswordPage />} />
 

@@ -6,7 +6,6 @@ import usersReducer from "./usersSlice"
 import siteContentReducer from "./siteContentSlice"
 import contactMessagesReducer from "./contactMessagesSlice"
 import { departmentsApi } from './api/departmentsApi'
-import { usersApi } from './api/usersApi'
 import { faqsApi } from './api/faqsApi'
 import { contactMessagesApi } from './api/contactMessagesApi'
 import { dashboardApi } from './api/dashboardApi'
@@ -22,7 +21,6 @@ export const store = configureStore({
     siteContent: siteContentReducer,
     contactMessages: contactMessagesReducer,
     [departmentsApi.reducerPath]: departmentsApi.reducer,
-    [usersApi.reducerPath]: usersApi.reducer,
     [faqsApi.reducerPath]: faqsApi.reducer,
     [contactMessagesApi.reducerPath]: contactMessagesApi.reducer,
     [dashboardApi.reducerPath]: dashboardApi.reducer,
@@ -32,7 +30,6 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
       .concat(departmentsApi.middleware)
-      .concat(usersApi.middleware)
       .concat(faqsApi.middleware)
       .concat(contactMessagesApi.middleware)
       .concat(dashboardApi.middleware)

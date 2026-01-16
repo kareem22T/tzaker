@@ -164,9 +164,6 @@ const MatchModal = ({ match, onClose, onSave, mode }) => {
                           src={getClubById(match.firstOpponent)?.logo} 
                           alt={getClubById(match.firstOpponent)?.name}
                           className="w-full h-full object-contain p-2"
-                          onError={(e) => {
-                            e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="80"%3E%3Crect fill="%23374151" width="80" height="80"/%3E%3C/svg%3E';
-                          }}
                         />
                       </div>
                       <p className="text-white font-semibold text-center">{getClubById(match.firstOpponent)?.name}</p>
@@ -178,9 +175,6 @@ const MatchModal = ({ match, onClose, onSave, mode }) => {
                           src={getClubById(match.secondOpponent)?.logo} 
                           alt={getClubById(match.secondOpponent)?.name}
                           className="w-full h-full object-contain p-2"
-                          onError={(e) => {
-                            e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="80"%3E%3Crect fill="%23374151" width="80" height="80"/%3E%3C/svg%3E';
-                          }}
                         />
                       </div>
                       <p className="text-white font-semibold text-center">{getClubById(match.secondOpponent)?.name}</p>
@@ -457,9 +451,6 @@ export default function MatchesManagement() {
                                 src={firstClub?.logo} 
                                 alt={firstClub?.name}
                                 className="w-full h-full object-contain p-0.5"
-                                onError={(e) => {
-                                  e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="32" height="32"%3E%3Crect fill="%23374151" width="32" height="32"/%3E%3C/svg%3E';
-                                }}
                               />
                             </div>
                             <span className="text-white font-medium">{firstClub?.name}</span>
@@ -469,9 +460,6 @@ export default function MatchesManagement() {
                                 src={secondClub?.logo} 
                                 alt={secondClub?.name}
                                 className="w-full h-full object-contain p-0.5"
-                                onError={(e) => {
-                                  e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="32" height="32"%3E%3Crect fill="%23374151" width="32" height="32"/%3E%3C/svg%3E';
-                                }}
                               />
                             </div>
                             <span className="text-white font-medium">{secondClub?.name}</span>
