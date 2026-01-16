@@ -209,7 +209,11 @@ const TicketModal = ({ ticket, onClose, onSave, mode }) => {
       quantity: parseInt(level.quantity),
     }));
 
-    const ticketData = {
+    const ticketData : {
+        id?: number
+        matchId: any
+        levels: any
+    } = {
       matchId: selectedMatchId,
       levels: processedLevels,
     };
