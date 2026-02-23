@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Calendar, Plus, Search, Edit2, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   useGetMatchesQuery,
   useCreateMatchMutation,
@@ -8,6 +8,7 @@ import {
 } from '../../store/api/matchesApi'
 import type { Match, CreateMatchPayload, UpdateMatchPayload } from '../../store/api/matchesApi'
 import { useGetClubsQuery } from '../../store/api/clubsApi'
+import { useGetSuppliersQuery } from '../../store/api/suppliersApi'
 import { useGetTournamentsQuery } from '../../store/api/tournamentsApi'
 import { useGetStadiumsQuery } from '../../store/api/stadiumsApi'
 
@@ -19,16 +20,19 @@ function MatchForm({ match, mode, onClose, onSave, saving }: {
   const [second_team_id, setSecondTeam] = useState(String(match?.second_team_id || ''))
   const [tournament_id, setTournament] = useState(String(match?.tournament_id || ''))
   const [stadium_id, setStadium] = useState(String(match?.stadium_id || ''))
+  const [supplier_id, setSupplier] = useState(String(match?.supplier_id || ''))
   const [match_datetime, setDatetime] = useState(match?.match_datetime?.slice(0, 16) || '')
   const readOnly = mode === 'view'
 
   const { data: clubsData } = useGetClubsQuery({ per_page: 100 })
   const { data: tournamentsData } = useGetTournamentsQuery({ per_page: 100 })
   const { data: stadiumsData } = useGetStadiumsQuery({ per_page: 100 })
+  const { data: suppliersData } = useGetSuppliersQuery({ per_page: 100 })
 
   const clubs = clubsData?.data.data || []
   const tournaments = tournamentsData?.data.data || []
   const stadiums = stadiumsData?.data.data || []
+  const suppliers = suppliersData?.data.data || []
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,24 +42,40 @@ function MatchForm({ match, mode, onClose, onSave, saving }: {
       first_team_id: Number(first_team_id), second_team_id: Number(second_team_id),
       tournament_id: Number(tournament_id), stadium_id: Number(stadium_id),
       match_datetime: formatted,
+      ...(supplier_id ? { supplier_id: Number(supplier_id) } : {}),
     }
     if (mode === 'create') await onSave(base)
     else if (match) await onSave({ ...base, id: match.id } as UpdateMatchPayload)
   }
 
-  const sel = (label: string, value: string, setter: (v: string) => void, items: { id: number; name_en: string }[], req = false) => (
+  const sel = (
+    label: string,
+    value: string,
+    setter: (v: string) => void,
+    items: { id: number; name_en?: string; name?: string }[],
+    req = false,
+  ) => (
     <div>
       <label className="block text-sm font-medium text-gray-300 mb-1">{label}{req ? ' *' : ''}</label>
-      <select value={value} onChange={e => setter(e.target.value)} disabled={readOnly} required={req}
-        className="w-full px-3 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors">
+      <select
+        value={value}
+        onChange={(e) => setter(e.target.value)}
+        disabled={readOnly}
+        required={req}
+        className="w-full px-3 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors"
+      >
         <option value="">Select...</option>
-        {items.map(i => <option key={i.id} value={i.id}>{i.name_en}</option>)}
+        {items.map((i) => (
+          <option key={i.id} value={i.id}>
+            {i.name_en ?? i.name ?? '—'}
+          </option>
+        ))}
       </select>
     </div>
   )
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] p-4">
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999999] p-4">
       <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-[#111d2d] border-b border-[#1e3a52] px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-bold text-white">{mode === 'create' ? 'Add Match' : mode === 'edit' ? 'Edit Match' : 'Match Details'}</h2>
@@ -67,6 +87,7 @@ function MatchForm({ match, mode, onClose, onSave, saving }: {
             {sel('Second Team *', second_team_id, setSecondTeam, clubs, true)}
             {sel('Tournament *', tournament_id, setTournament, tournaments, true)}
             {sel('Stadium *', stadium_id, setStadium, stadiums, true)}
+            {sel('Supplier *', supplier_id, setSupplier, suppliers, true)}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Match Date & Time *</label>
@@ -139,7 +160,7 @@ export default function MatchesManagement() {
             </thead>
             <tbody className="divide-y divide-[#1e3a52]">
               {(isLoading || isFetching) && Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}><td colSpan={6} className="px-4 py-3"><div className="h-4 bg-[#1e3a52] rounded animate-pulse" /></td></tr>
+                <tr key={i}><td colSpan={7} className="px-4 py-3"><div className="h-4 bg-[#1e3a52] rounded animate-pulse" /></td></tr>
               ))}
               {!isLoading && !isFetching && matches.map(m => (
                 <tr key={m.id} className="hover:bg-[#0a1929]/50 transition-colors">
@@ -148,6 +169,7 @@ export default function MatchesManagement() {
                       {m.first_team?.name_en || '—'} <span className="text-[#00ff88]">vs</span> {m.second_team?.name_en || '—'}
                     </div>
                   </td>
+                  <td className="px-4 py-3 text-gray-300">{m.supplier?.name || '—'}</td>
                   <td className="px-4 py-3 text-gray-300">{m.tournament?.name_en || '—'}</td>
                   <td className="px-4 py-3 text-gray-300">{m.stadium?.name_en || '—'}</td>
                   <td className="px-4 py-3 text-gray-400">{m.match_datetime?.replace('T', ' ').slice(0, 16)}</td>
@@ -165,7 +187,7 @@ export default function MatchesManagement() {
                 </tr>
               ))}
               {!isLoading && !isFetching && matches.length === 0 && !isError && (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-400">No matches found</td></tr>
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-gray-400">No matches found</td></tr>
               )}
             </tbody>
           </table>

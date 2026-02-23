@@ -29,7 +29,14 @@ const SupplierModal: React.FC<ModalProps> = ({ supplier, mode, onClose, onSave, 
     phone: supplier?.phone ?? '',
     username: supplier?.username ?? '',
     password: '',
+    // new multilingual/description fields
+    name_en: supplier?.name_en ?? '',
+    name_ar: supplier?.name_ar ?? '',
+    desc_en: supplier?.desc_en ?? '',
+    desc_ar: supplier?.desc_ar ?? '',
+    image: undefined,
   });
+  const [preview, setPreview] = useState<string>(supplier?.image ?? '');
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = () => {
@@ -45,8 +52,16 @@ const SupplierModal: React.FC<ModalProps> = ({ supplier, mode, onClose, onSave, 
     onSave(formData);
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFormData({ ...formData, image: file });
+      setPreview(URL.createObjectURL(file));
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] p-4">
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999999] p-4">
       <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-[#111d2d] border-b border-[#1e3a52] p-6 flex items-center justify-between">
@@ -71,9 +86,13 @@ const SupplierModal: React.FC<ModalProps> = ({ supplier, mode, onClose, onSave, 
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { label: 'Name', value: supplier.name },
+                  { label: 'Name (EN)', value: supplier.name_en || '-' },
+                  { label: 'Name (AR)', value: supplier.name_ar || '-' },
                   { label: 'Email', value: supplier.email },
                   { label: 'Phone', value: supplier.phone },
                   { label: 'Username', value: supplier.username },
+                  { label: 'Description (EN)', value: supplier.desc_en || '-' },
+                  { label: 'Description (AR)', value: supplier.desc_ar || '-' },
                   { label: 'Status', value: supplier.status === 1 ? 'Active' : 'Inactive' },
                   { label: 'Created At', value: supplier.created_at },
                 ].map(({ label, value }) => (
@@ -100,6 +119,29 @@ const SupplierModal: React.FC<ModalProps> = ({ supplier, mode, onClose, onSave, 
                     className="w-full px-4 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors"
                     placeholder="Enter supplier name"
                   />
+                </div>
+                {/* multilingual name inputs */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Name (English)</label>
+                    <input
+                      type="text"
+                      value={formData.name_en || ''}
+                      onChange={(e) => setFormData({ ...formData, name_en: e.target.value })}
+                      className="w-full px-4 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors"
+                      placeholder="English name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Name (Arabic)</label>
+                    <input
+                      type="text"
+                      value={formData.name_ar || ''}
+                      onChange={(e) => setFormData({ ...formData, name_ar: e.target.value })}
+                      className="w-full px-4 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors"
+                      placeholder="Arabic name"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -146,6 +188,44 @@ const SupplierModal: React.FC<ModalProps> = ({ supplier, mode, onClose, onSave, 
                       placeholder="••••••••"
                     />
                   </div>
+                </div>
+                {/* descriptions */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Description (English)</label>
+                    <textarea
+                      rows={2}
+                      value={formData.desc_en || ''}
+                      onChange={(e) => setFormData({ ...formData, desc_en: e.target.value })}
+                      className="w-full px-4 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors"
+                      placeholder="English description"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Description (Arabic)</label>
+                    <textarea
+                      rows={2}
+                      value={formData.desc_ar || ''}
+                      onChange={(e) => setFormData({ ...formData, desc_ar: e.target.value })}
+                      className="w-full px-4 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors"
+                      placeholder="Arabic description"
+                    />
+                  </div>
+                </div>
+                {/* image upload */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Image</label>
+                  {preview && (
+                    <div className="mb-2">
+                      <img src={preview} alt="preview" className="w-16 h-16 rounded-full object-cover border border-[#1e3a52]" />
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="w-full text-sm text-gray-300 file:mr-3 file:px-3 file:py-1.5 file:bg-[#1e3a52] file:text-white file:rounded file:border-0 file:text-sm"
+                  />
                 </div>
               </div>
             </div>

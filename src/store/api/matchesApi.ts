@@ -10,6 +10,7 @@ export interface Match {
   second_team_id: number
   tournament_id: number
   stadium_id: number
+  supplier_id?: number
   match_datetime: string
   status: string
   created_at: string
@@ -17,6 +18,7 @@ export interface Match {
   second_team?: { id: number; name_en: string; name_ar: string; logo?: string }
   tournament?: { id: number; name_en: string; name_ar: string }
   stadium?: { id: number; name_en: string; name_ar: string; levels?: StadiumLevel[] }
+  supplier?: { id: number; name: string }
 }
 
 interface MatchListResponse {
@@ -50,6 +52,7 @@ export interface CreateMatchPayload {
   tournament_id: number
   stadium_id: number
   match_datetime: string
+  supplier_id?: number
 }
 
 export interface UpdateMatchPayload extends CreateMatchPayload {
@@ -81,7 +84,9 @@ export const matchesApi = createApi({
     createMatch: builder.mutation<MatchSingleResponse, CreateMatchPayload>({
       query: (data) => {
         const fd = new FormData()
-        Object.entries(data).forEach(([k, v]) => fd.append(k, String(v)))
+        Object.entries(data).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) fd.append(k, String(v))
+        })
         return { url: '/admin/matches', method: 'POST', body: fd }
       },
       invalidatesTags: [{ type: 'Match', id: 'LIST' }],
@@ -90,7 +95,9 @@ export const matchesApi = createApi({
     updateMatch: builder.mutation<MatchSingleResponse, UpdateMatchPayload>({
       query: ({ id, ...data }) => {
         const fd = new FormData()
-        Object.entries(data).forEach(([k, v]) => fd.append(k, String(v)))
+        Object.entries(data).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) fd.append(k, String(v))
+        })
         return { url: `/admin/matches/update/${id}`, method: 'POST', body: fd }
       },
       invalidatesTags: (_r, _e, arg) => [{ type: 'Match', id: arg.id }, { type: 'Match', id: 'LIST' }],

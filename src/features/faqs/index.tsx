@@ -46,7 +46,6 @@ export default function FaqCategoriesManagement() {
       }
       setModalState({ open: false, mode: null, category: null })
     } catch (err) {
-      // errors are surfaced by baseQueryWithAuth; keep UI stable
       console.error(err)
     }
   }
@@ -61,72 +60,82 @@ export default function FaqCategoriesManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a1929] p-6">
-      <div>
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <HelpCircle className="w-10 h-10 text-[#00ff88]" />
-            <h1 className="text-4xl font-bold text-white">FAQ Categories</h1>
-          </div>
-          <p className="text-gray-400">Manage FAQ categories and organize your help content</p>
-        </div>
+    // ✅ Match: same root padding as MatchesManagement — no redundant nested div
+    <div className="p-6 min-h-screen">
 
-        <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg p-6 mb-6">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search categories..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff88] transition-colors"
-              />
-            </div>
-            <button
-              onClick={() => setModalState({ open: true, mode: 'create', category: null })}
-              className="px-6 py-2.5 bg-[#00ff88] text-[#0a1929] font-semibold rounded-lg hover:bg-[#00dd77] transition-colors inline-flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Add Category
-            </button>
-          </div>
+      {/* Header — matches style of Matches page */}
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-1">
+          <HelpCircle className="w-8 h-8 text-[#00ff88]" />
+          <h1 className="text-3xl font-bold text-white">FAQ Categories</h1>
         </div>
+        <p className="text-gray-400">Manage FAQ categories and organize your help content</p>
+      </div>
 
-        <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg overflow-hidden">
-          {isError && (
-            <div className="p-6 text-center text-red-400">
-              Failed to load categories. <button onClick={() => refetch()} className="underline">Retry</button>
-            </div>
-          )}
-          <div className="overflow-x-auto p-6">
-            <CategoriesTable
-              categories={filteredCategories}
-              selectedCategories={new Set()}
-              onSelectAll={() => {}}
-              onToggleSelect={() => {}}
-              onDelete={(id) => handleDelete(id)}
-              allSelected={false}
-              isDeleting={deleting}
-            />
-          </div>
+      {/* Toolbar — matches Matches page: same bg, border, padding, right-aligned button */}
+      <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg p-4 mb-4 flex items-center gap-3">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search categories..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#00ff88] transition-colors"
+          />
         </div>
+        <button
+          onClick={() => setModalState({ open: true, mode: 'create', category: null })}
+          className="flex items-center gap-2 px-4 py-2 bg-[#00ff88] text-[#0a1929] font-semibold rounded-lg hover:bg-[#00dd77] text-sm transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Add Category
+        </button>
+      </div>
 
-        <div className="mt-6 text-gray-400 text-sm">
-          Showing {filteredCategories.length} of {categories.length} categories
+      {/* Table card — matches Matches page exactly */}
+      <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg overflow-hidden">
+        {isError && (
+          <div className="p-8 text-center text-red-400">
+            Failed to load categories.{' '}
+            <button onClick={() => refetch()} className="underline">Retry</button>
+          </div>
+        )}
+        <div className="overflow-x-auto">
+          <CategoriesTable
+            categories={filteredCategories}
+            selectedCategories={new Set()}
+            onSelectAll={() => {}}
+            onToggleSelect={() => {}}
+            onDelete={(id) => handleDelete(id)}
+            allSelected={false}
+            isDeleting={deleting}
+          />
         </div>
+      </div>
+
+      {/* Footer count */}
+      <div className="mt-4 text-gray-400 text-sm">
+        Showing {filteredCategories.length} of {categories.length} categories
       </div>
 
       {/* Modal */}
       {modalState.open && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-9999999 p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999999] p-4">
           <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-[#111d2d] border-b border-[#1e3a52] p-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">
-                {modalState.mode === 'create' ? 'Add New Category' : modalState.mode === 'edit' ? 'Edit Category' : 'Category Details'}
+            <div className="sticky top-0 bg-[#111d2d] border-b border-[#1e3a52] px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">
+                {modalState.mode === 'create'
+                  ? 'Add New Category'
+                  : modalState.mode === 'edit'
+                  ? 'Edit Category'
+                  : 'Category Details'}
               </h2>
-              <button onClick={() => setModalState({ open: false, mode: null, category: null })} className="text-gray-400 hover:text-white transition-colors">
-                <X className="w-6 h-6" />
+              <button
+                onClick={() => setModalState({ open: false, mode: null, category: null })}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -148,7 +157,6 @@ export default function FaqCategoriesManagement() {
                       )}
                     </div>
                   </div>
-
                   <div className="space-y-4">
                     <div>
                       <p className="text-sm text-gray-400 mb-1">Description (English)</p>
@@ -167,7 +175,11 @@ export default function FaqCategoriesManagement() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-400 mb-1">Created At</p>
-                        <p className="text-white font-medium">{modalState.category?.createdAt ? new Date(modalState.category.createdAt).toLocaleDateString() : ''}</p>
+                        <p className="text-white font-medium">
+                          {modalState.category?.createdAt
+                            ? new Date(modalState.category.createdAt).toLocaleDateString()
+                            : ''}
+                        </p>
                       </div>
                     </div>
                   </div>
