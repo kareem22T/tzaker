@@ -14,6 +14,8 @@ function TicketForm({ ticket, mode, onClose, onSave, saving }: {
   ticket: MatchTicket | null; mode: 'create' | 'edit' | 'view'; onClose: () => void
   onSave: (d: CreateTicketPayload | UpdateTicketPayload) => Promise<void>; saving: boolean
 }) {
+  type LevelKey = 'price' | 'quantity' | 'low_quantity'
+
   const [match_id, setMatchId] = useState(String(ticket?.match.id || ''))
   const [levels, setLevels] = useState<{ stadium_level_id: number; name: string; price: string; quantity: string; low_quantity: string }[]>(
     ticket ? [{ stadium_level_id: ticket.stadium_level.id, name: ticket.stadium_level.name_en, price: String(ticket.stadium_level.price_raw || ticket.stadium_level.price), quantity: String(ticket.stadium_level.quantity), low_quantity: String(ticket.stadium_level.low_quantity) }] : []
@@ -21,7 +23,7 @@ function TicketForm({ ticket, mode, onClose, onSave, saving }: {
   const readOnly = mode === 'view'
 
   const { data: matchesData } = useGetMatchesQuery({ per_page: 100 })
-  const [fetchMatchStadium, { data: matchStadiumData, isFetching: loadingLevels }] = useLazyGetMatchWithStadiumQuery()
+  const [fetchMatchStadium, { isFetching: loadingLevels }] = useLazyGetMatchWithStadiumQuery()
   const matches = matchesData?.data.data || []
 
   useEffect(() => {
@@ -31,9 +33,10 @@ function TicketForm({ ticket, mode, onClose, onSave, saving }: {
         setLevels(lvls.map((l: { id: number; name_en: string }) => ({ stadium_level_id: l.id, name: l.name_en, price: '', quantity: '', low_quantity: '' })))
       })
     }
-  }, [match_id])
+  }, [match_id, fetchMatchStadium, mode])
 
-  const setLevel = (i: number, k: string, v: string) => setLevels(prev => prev.map((l, idx) => idx === i ? { ...l, [k]: v } : l))
+  const setLevel = (i: number, k: LevelKey, v: string) =>
+    setLevels(prev => prev.map((l, idx) => idx === i ? { ...l, [k]: v } : l))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,10 +77,10 @@ function TicketForm({ ticket, mode, onClose, onSave, saving }: {
                 <div key={i} className="bg-[#0a1929] border border-[#1e3a52] rounded-lg p-4">
                   <p className="text-white font-medium mb-3">{lvl.name}</p>
                   <div className="grid grid-cols-3 gap-3">
-                    {[['Price', 'price'], ['Quantity', 'quantity'], ['Low Stock', 'low_quantity']].map(([l, k]) => (
+                    {([['Price', 'price'], ['Quantity', 'quantity'], ['Low Stock', 'low_quantity']] as [string, LevelKey][]).map(([l, k]) => (
                       <div key={k}>
                         <label className="block text-xs font-medium text-gray-400 mb-1">{l} *</label>
-                        <input type="number" value={(lvl as Record<string, string>)[k]} onChange={e => setLevel(i, k, e.target.value)} readOnly={readOnly} required min="0"
+                        <input type="number" value={lvl[k]} onChange={e => setLevel(i, k, e.target.value)} readOnly={readOnly} required min="0"
                           className="w-full px-2 py-1.5 bg-[#111d2d] border border-[#1e3a52] rounded text-white text-sm focus:outline-none focus:border-[#00ff88] transition-colors" />
                       </div>
                     ))}
