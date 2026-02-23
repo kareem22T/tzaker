@@ -2,68 +2,74 @@ import { createApi } from '@reduxjs/toolkit/query/react'
 import type { FaqCategory, Faq } from '../faqsSlice'
 import { baseQueryWithAuth } from './baseQuery'
 
-// API Response types
-interface ApiResponse<T> {
-  success: boolean
-  data: T
-  message?: string
+// ── Raw API types ─────────────────────────────────────────────────────────────
+
+interface PaginatedResponse<T> {
+  status: number
+  message: string
+  data: {
+    current_page: number
+    data: T[]
+    last_page: number
+    per_page: number
+    total: number
+    from: number
+    to: number
+  }
 }
 
-interface ListResponse<T> {
-  success: boolean
-  data: T[]
-}
-
-// Backend structures
 interface BackendFaqCategory {
   id: number
-  name: string
+  name_en: string
   name_ar?: string
-  description?: string
-  description_ar?: string
+  desc_en?: string
+  desc_ar?: string
   icon?: string
-  icon_url?: string
-  display_order: number
+  sort_order: number
+  status: number | string
   created_at: string
-  updated_at: string
+  updated_at?: string
 }
 
 interface BackendFaq {
   id: number
-  category_id: number
-  question: string
+  faq_category_id: number
+  question_en: string
   question_ar?: string
-  answer: string
+  answer_en: string
   answer_ar?: string
-  display_order: number
-  is_published: boolean
+  sort_order: number
+  status: number | string
   created_at: string
-  updated_at: string
+  updated_at?: string
+  category?: { id: number; name_en: string; name_ar?: string }
 }
 
-// Transform functions
-const transformCategoryFromBackend = (backend: BackendFaqCategory): FaqCategory => ({
-  id: backend.id?.toString(),
-  title: backend.name,
-  title_ar: backend.name_ar,
-  description: backend.description || '',
-  description_ar: backend.description_ar,
-  icon_url: backend.icon_url || '',
-  order: backend.display_order,
-  createdAt: backend.created_at,
-  updatedAt: backend.updated_at,
+// ── Transform helpers ─────────────────────────────────────────────────────────
+
+const transformCategoryFromBackend = (c: BackendFaqCategory): FaqCategory => ({
+  id: String(c.id),
+  title: c.name_en,
+  title_ar: c.name_ar,
+  description: c.desc_en || '',
+  description_ar: c.desc_ar,
+  icon_url: c.icon || '',
+  order: c.sort_order ?? 0,
+  createdAt: c.created_at,
+  updatedAt: c.updated_at || c.created_at,
 })
 
-const transformFaqFromBackend = (backend: BackendFaq): Faq => ({
-  id: backend.id?.toString(),
-  categoryId: backend.category_id?.toString(),
-  question: backend.question,
-  question_ar: backend.question_ar,
-  answer: backend.answer,
-  answer_ar: backend.answer_ar,
-  order: backend.display_order,
-  createdAt: backend.created_at,
-  updatedAt: backend.updated_at,
+const transformFaqFromBackend = (q: BackendFaq): Faq => ({
+  id: String(q.id),
+  categoryId: String(q.faq_category_id),
+  question: q.question_en,
+  question_ar: q.question_ar,
+  answer: q.answer_en,
+  answer_ar: q.answer_ar,
+  order: q.sort_order ?? 0,
+  is_published: Number(q.status) === 1,
+  createdAt: q.created_at,
+  updatedAt: q.updated_at || q.created_at,
 })
 
 export const faqsApi = createApi({
@@ -71,224 +77,124 @@ export const faqsApi = createApi({
   baseQuery: baseQueryWithAuth,
   tagTypes: ['FaqCategory', 'Faq'],
   endpoints: (builder) => ({
-    // ==================== FAQ CATEGORIES ====================
-    
-    // Get all categories
+    // ── FAQ Categories ────────────────────────────────────────────────────────
+
     getFaqCategories: builder.query<FaqCategory[], void>({
-      query: () => '/dashboard/faqs/categories',
-      transformResponse: (response: ListResponse<BackendFaqCategory>) =>
-        response.data.map(transformCategoryFromBackend),
+      query: () => ({ url: '/admin/faq-categories', params: { per_page: 100 } }),
+      transformResponse: (res: PaginatedResponse<BackendFaqCategory>) =>
+        res.data.data.map(transformCategoryFromBackend),
       providesTags: (result) =>
         result
-          ? [
-              ...result.map(({ id }) => ({ type: 'FaqCategory' as const, id })),
-              { type: 'FaqCategory', id: 'LIST' },
-            ]
+          ? [...result.map(({ id }) => ({ type: 'FaqCategory' as const, id })), { type: 'FaqCategory', id: 'LIST' }]
           : [{ type: 'FaqCategory', id: 'LIST' }],
     }),
 
-    // Create category (with file upload)
     createFaqCategory: builder.mutation<FaqCategory, {
-      name: string
-      name_ar?: string
-      description?: string
-      description_ar?: string
-      icon?: File
-      display_order?: number
+      name: string; name_ar?: string; description?: string; description_ar?: string; icon?: File; display_order?: number
     }>({
-      query: (data) => {
-        const formData = new FormData()
-        formData.append('name', data.name)
-        if (data.name_ar) formData.append('name_ar', data.name_ar)
-        if (data.description) formData.append('description', data.description)
-        if (data.description_ar) formData.append('description_ar', data.description_ar)
-        if (data.icon) formData.append('icon', data.icon)
-        if (data.display_order) formData.append('display_order', data.display_order?.toString())
-
-        return {
-          url: '/dashboard/faqs/categories',
-          method: 'POST',
-          body: formData,
-          prepareHeaders: (headers: Headers) => {
-            headers.delete('Content-Type')
-            return headers
-          },
-        }
+      query: ({ name, name_ar, description, description_ar, icon, display_order }) => {
+        const fd = new FormData()
+        fd.append('name_en', name)
+        if (name_ar) fd.append('name_ar', name_ar)
+        if (description) fd.append('desc_en', description)
+        if (description_ar) fd.append('desc_ar', description_ar)
+        if (icon) fd.append('icon', icon)
+        fd.append('sort_order', String(display_order ?? 1))
+        fd.append('status', '1')
+        return { url: '/admin/faq-categories', method: 'POST', body: fd }
       },
-      transformResponse: (response: ApiResponse<BackendFaqCategory>) =>
-        transformCategoryFromBackend(response.data),
+      transformResponse: (res: { status: number; message: string; data: BackendFaqCategory }) =>
+        transformCategoryFromBackend(res.data),
       invalidatesTags: [{ type: 'FaqCategory', id: 'LIST' }],
     }),
 
-    // Update category (with file upload)
     updateFaqCategory: builder.mutation<FaqCategory, {
-      id: string | number
-      name?: string
-      name_ar?: string
-      description?: string
-      description_ar?: string
-      icon?: File
-      display_order?: number
+      id: string | number; name: string; name_ar?: string; description?: string; description_ar?: string; icon?: File; display_order?: number
     }>({
-      query: ({ id, ...data }) => {
-        const formData = new FormData()
-        formData.append('_method', 'PUT')
-        if (data.name) formData.append('name', data.name)
-        if (data.name_ar !== undefined) formData.append('name_ar', data.name_ar)
-        if (data.description !== undefined) formData.append('description', data.description)
-        if (data.description_ar !== undefined) formData.append('description_ar', data.description_ar)
-        if (data.icon) formData.append('icon', data.icon)
-        if (data.display_order) formData.append('display_order', data.display_order?.toString())
-
-        return {
-          url: `/dashboard/faqs/categories/${id}`,
-          method: 'POST',
-          body: formData,
-          prepareHeaders: (headers: Headers) => {
-            headers.delete('Content-Type')
-            return headers
-          },
-        }
-      },
-      transformResponse: (response: ApiResponse<BackendFaqCategory>) =>
-        transformCategoryFromBackend(response.data),
-      invalidatesTags: (result, error, { id }) => [
-        { type: 'FaqCategory', id },
+      query: ({ id, name, name_ar, description, description_ar, display_order }) => ({
+        url: `/admin/faq-categories/${id}`,
+        method: 'PUT',
+        body: { name_en: name, name_ar, desc_en: description, desc_ar: description_ar, sort_order: display_order ?? 1 },
+      }),
+      transformResponse: (res: { status: number; message: string; data: BackendFaqCategory }) =>
+        transformCategoryFromBackend(res.data),
+      invalidatesTags: (_r, _e, arg) => [
+        { type: 'FaqCategory', id: String(arg.id) },
         { type: 'FaqCategory', id: 'LIST' },
       ],
     }),
 
-    // Delete category
-    deleteFaqCategory: builder.mutation<{ success: boolean; message: string }, string | number>({
-      query: (id) => ({
-        url: `/dashboard/faqs/categories/${id}`,
-        method: 'DELETE',
-      }),
-      invalidatesTags: [{ type: 'FaqCategory', id: 'LIST' }, { type: 'Faq', id: 'LIST' }],
+    deleteFaqCategory: builder.mutation<{ status: number; message: string }, string | number>({
+      query: (id) => ({ url: `/admin/faq-categories/${id}`, method: 'DELETE' }),
+      invalidatesTags: [{ type: 'FaqCategory', id: 'LIST' }],
     }),
 
-    // ==================== FAQs ====================
-    
-    // Get all FAQs
-    getFaqs: builder.query<Faq[], {
-      category_id?: string | number
-      search?: string
-      is_published?: boolean
-    }>({
-      query: ({ category_id = '', search = '', is_published }) => ({
-        url: '/dashboard/faqs',
-        params: {
-          ...(category_id ? { category_id } : {}),
-          search,
-          ...(is_published !== undefined && { is_published: is_published ? 1 : 0 }),
-        },
-      }),
-      transformResponse: (response: ListResponse<BackendFaq>) =>
-        response.data.map(transformFaqFromBackend),
+    // ── FAQ Questions ─────────────────────────────────────────────────────────
+
+    getFaq: builder.query<Faq, string | number>({
+      query: (id) => ({ url: `/admin/questions/${id}` }),
+      transformResponse: (res: { status: number; message: string; data: BackendFaq }) =>
+        transformFaqFromBackend(res.data),
+      providesTags: (_r, _e, id) => [{ type: 'Faq' as const, id: String(id) }],
+    }),
+
+    getFaqs: builder.query<Faq[], void>({
+      query: () => ({ url: '/admin/questions', params: { per_page: 200 } }),
+      transformResponse: (res: PaginatedResponse<BackendFaq>) =>
+        res.data.data.map(transformFaqFromBackend),
       providesTags: (result) =>
         result
-          ? [
-              ...result.map(({ id }) => ({ type: 'Faq' as const, id })),
-              { type: 'Faq', id: 'LIST' },
-            ]
+          ? [...result.map(({ id }) => ({ type: 'Faq' as const, id })), { type: 'Faq', id: 'LIST' }]
           : [{ type: 'Faq', id: 'LIST' }],
     }),
 
-    // Get single FAQ
-    getFaq: builder.query<Faq, string | number>({
-      query: (id) => `/dashboard/faqs/${id}`,
-      transformResponse: (response: ApiResponse<BackendFaq>) =>
-        transformFaqFromBackend(response.data),
-      providesTags: (result, error, id) => [{ type: 'Faq', id }],
+    createFaq: builder.mutation<Faq, {
+      categoryId: string; question: string; question_ar?: string; answer: string; answer_ar?: string; display_order?: number; is_published?: boolean
+    }>({
+      query: ({ categoryId, question, question_ar, answer, answer_ar, display_order, is_published }) => {
+        const fd = new FormData()
+        fd.append('faq_category_id', categoryId)
+        fd.append('question_en', question)
+        if (question_ar) fd.append('question_ar', question_ar)
+        fd.append('answer_en', answer)
+        if (answer_ar) fd.append('answer_ar', answer_ar)
+        fd.append('sort_order', String(display_order ?? 1))
+        fd.append('status', (is_published ?? true) ? '1' : '0')
+        return { url: '/admin/questions', method: 'POST', body: fd }
+      },
+      transformResponse: (res: { status: number; message: string; data: BackendFaq }) =>
+        transformFaqFromBackend(res.data),
+      invalidatesTags: [{ type: 'Faq', id: 'LIST' }],
     }),
 
-    // Create FAQ
-    createFaq: builder.mutation<Faq, {
-      category_id: number
-      question: string
-      question_ar?: string
-      answer: string
-      answer_ar?: string
-      display_order?: number
-      is_published?: boolean
+    updateFaq: builder.mutation<Faq, {
+      id: string | number; categoryId: string; question: string; question_ar?: string; answer: string; answer_ar?: string; display_order?: number; is_published?: boolean
     }>({
-      query: (data) => ({
-        url: '/dashboard/faqs',
-        method: 'POST',
+      query: ({ id, categoryId, question, question_ar, answer, answer_ar, display_order, is_published }) => ({
+        url: `/admin/questions/${id}`,
+        method: 'PUT',
         body: {
-          faq_category_id: data.category_id,
-          question: data.question,
-          question_ar: data.question_ar,
-          answer: data.answer,
-          answer_ar: data.answer_ar,
-          display_order: data.display_order || 1,
-          is_published: data.is_published !== false,
+          faq_category_id: categoryId,
+          question_en: question,
+          question_ar,
+          answer_en: answer,
+          answer_ar,
+          sort_order: display_order ?? 1,
+          status: (is_published ?? true) ? 1 : 0,
         },
       }),
-      transformResponse: (response: ApiResponse<BackendFaq>) =>
-        transformFaqFromBackend(response.data),
+      transformResponse: (res: { status: number; message: string; data: BackendFaq }) =>
+        transformFaqFromBackend(res.data),
+      invalidatesTags: (_r, _e, arg) => [{ type: 'Faq', id: String(arg.id) }, { type: 'Faq', id: 'LIST' }],
+    }),
+
+    deleteFaq: builder.mutation<{ status: number; message: string }, string | number>({
+      query: (id) => ({ url: `/admin/questions/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Faq', id: 'LIST' }],
     }),
 
-    // Update FAQ
-    updateFaq: builder.mutation<Faq, {
-      id: string | number
-      faq_category_id?: number
-      question?: string
-      question_ar?: string
-      answer?: string
-      answer_ar?: string
-      display_order?: number
-      is_published?: boolean
-    }>({
-      query: ({ id, ...data }) => ({
-        url: `/dashboard/faqs/${id}`,
-        method: 'PUT',
-        body: data,
-      }),
-      transformResponse: (response: ApiResponse<BackendFaq>) =>
-        transformFaqFromBackend(response.data),
-      invalidatesTags: (result, error, { id }) => [
-        { type: 'Faq', id },
-        { type: 'Faq', id: 'LIST' },
-      ],
-    }),
-
-    // Delete FAQ
-    deleteFaq: builder.mutation<{ success: boolean; message: string }, string | number>({
-      query: (id) => ({
-        url: `/dashboard/faqs/${id}`,
-        method: 'DELETE',
-      }),
-      invalidatesTags: [{ type: 'Faq', id: 'LIST' }],
-    }),
-
-    // Update FAQ order (for drag and drop)
-    updateFaqOrder: builder.mutation<void, Array<{
-      id: string | number
-      faq_category_id: number
-      question: string
-      question_ar?: string
-      answer: string
-      answer_ar?: string
-      display_order: number
-      is_published: boolean
-    }>>({
-      async queryFn(faqs, _api, _extraOptions, baseQuery) {
-        try {
-          for (const faq of faqs) {
-            const { id, ...data } = faq
-            await baseQuery({
-              url: `/dashboard/faqs/${id}`,
-              method: 'PUT',
-              body: data,
-            })
-          }
-          return { data: undefined }
-        } catch (error) {
-          return { error: { status: 'CUSTOM_ERROR', error: String(error) } }
-        }
-      },
+    updateFaqOrder: builder.mutation<void, { id: string; order: number }>({
+      query: ({ id, order }) => ({ url: `/admin/questions/${id}`, method: 'PUT', body: { sort_order: order } }),
       invalidatesTags: [{ type: 'Faq', id: 'LIST' }],
     }),
   }),
@@ -299,8 +205,8 @@ export const {
   useCreateFaqCategoryMutation,
   useUpdateFaqCategoryMutation,
   useDeleteFaqCategoryMutation,
-  useGetFaqsQuery,
   useGetFaqQuery,
+  useGetFaqsQuery,
   useCreateFaqMutation,
   useUpdateFaqMutation,
   useDeleteFaqMutation,

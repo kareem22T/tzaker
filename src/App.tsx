@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { Toaster } from 'sonner';
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
@@ -33,6 +34,7 @@ import FaqsManagement from "./features/faqs/FaqsList";
 export default function App() {
   return (
     <>
+      <Toaster position="top-right" richColors closeButton toastOptions={{ duration: 5000 }} />
       <Router>
         <ScrollToTop />
         <Routes>

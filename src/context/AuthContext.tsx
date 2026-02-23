@@ -56,14 +56,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const res = await signInRequest(email, password);
-      if (res && (res.data?.token || res.data?.token || res.token)) {
+      if (res && (res.data?.token || res.token)) {
         const tokenValue = res.data?.token || res.token;
         localStorage.setItem("token", tokenValue);
         setToken(tokenValue);
-        // fetch profile
-        const profile = await getProfileRequest(tokenValue);
-        const userData = profile?.data?.admin || profile?.admin || profile?.data;
-        setUser(userData || null);
+
+        // If backend returned the admin object inside login response, use it directly
+        if (res.data?.admin) {
+          setUser(res.data.admin);
+        } else {
+          // fallback: fetch profile using the token
+          const profile = await getProfileRequest(tokenValue);
+          const userData = profile?.data?.admin || profile?.admin || profile?.data;
+          setUser(userData || null);
+        }
+
         return { success: true };
       }
       const message = res?.message || "Invalid credentials";

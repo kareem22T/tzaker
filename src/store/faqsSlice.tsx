@@ -21,6 +21,7 @@ export interface Faq {
   answer: string
   answer_ar?: string
   order: number
+  is_published?: boolean
   createdAt: string
   updatedAt: string
 }

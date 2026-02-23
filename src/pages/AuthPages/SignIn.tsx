@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { useAuth } from '../../context/AuthContext';
 
 const SignInForm = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -9,11 +10,20 @@ const SignInForm = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const auth = useAuth();
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/')
+    setLoading(true);
+    setError(null);
+    const res = await auth.signIn(email, password);
+    setLoading(false);
+    if (res.success) {
+      navigate('/');
+    } else {
+      setError(res.message || 'Sign in failed');
+    }
   };
 
   return (

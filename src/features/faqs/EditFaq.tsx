@@ -23,7 +23,7 @@ export default function EditFaqPage() {
     try {
       await updateFaq({
         id: faqId,
-        faq_category_id: parseInt(data.categoryId),
+        categoryId: data.categoryId,
         question: data.question,
         question_ar: data.question_ar,
         answer: data.answer,

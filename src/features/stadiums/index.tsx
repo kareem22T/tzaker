@@ -1,501 +1,244 @@
-import React, { useState, useMemo } from 'react';
-import { Building, Plus, Search, Edit2, Trash2, X, Upload, Image } from 'lucide-react';
+import React, { useState } from 'react'
+import { Building2, Plus, Search, Edit2, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  useGetStadiumsQuery,
+  useCreateStadiumMutation,
+  useUpdateStadiumMutation,
+  useDeleteStadiumMutation,
+} from '../../store/api/stadiumsApi'
+import type { Stadium, StadiumLevelInput, CreateStadiumPayload, UpdateStadiumPayload } from '../../store/api/stadiumsApi'
+import { useGetCountriesQuery, useLazyGetCitiesQuery } from '../../store/api/countriesApi'
 
-// Mock Redux-like state management
-const useStadiumsStore = () => {
-  const [stadiums, setStadiums] = useState([
-    {
-      id: "1",
-      name: "Cairo International Stadium",
-      city: "Cairo",
-      country: "Egypt",
-      levels: [
-        {
-          id: "l1",
-          name: "Level A",
-          image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23f0f0f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='18' fill='%23666'%3ELevel A Seating%3C/text%3E%3C/svg%3E"
-        },
-        {
-          id: "l2",
-          name: "Level B",
-          image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e8e8e8' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='18' fill='%23666'%3ELevel B Seating%3C/text%3E%3C/svg%3E"
-        }
-      ],
-      createdAt: "2024-01-10T09:00:00Z",
-    },
-    {
-      id: "2",
-      name: "Wembley Stadium",
-      city: "London",
-      country: "United Kingdom",
-      levels: [
-        {
-          id: "l3",
-          name: "Lower Tier",
-          image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23f0f0f0' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='18' fill='%23666'%3ELower Tier%3C/text%3E%3C/svg%3E"
-        },
-        {
-          id: "l4",
-          name: "Upper Tier",
-          image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e8e8e8' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='18' fill='%23666'%3EUpper Tier%3C/text%3E%3C/svg%3E"
-        },
-        {
-          id: "l5",
-          name: "VIP Section",
-          image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23d8d8d8' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='18' fill='%23666'%3EVIP Section%3C/text%3E%3C/svg%3E"
-        }
-      ],
-      createdAt: "2024-01-15T14:30:00Z",
-    }
-  ]);
+const EMPTY_LEVEL = (): StadiumLevelInput => ({ name_en: '', name_ar: '', desc_en: '', desc_ar: '', seating_image: null })
 
-  const [selectedStadiums, setSelectedStadiums] = useState([]);
+function StadiumForm({ stadium, mode, onClose, onSave, saving }: {
+  stadium: Stadium | null; mode: 'create' | 'edit' | 'view'; onClose: () => void
+  onSave: (d: CreateStadiumPayload | UpdateStadiumPayload) => Promise<void>; saving: boolean
+}) {
+  const [name_en, setNameEn] = useState(stadium?.name_en || '')
+  const [name_ar, setNameAr] = useState(stadium?.name_ar || '')
+  const [capacity, setCapacity] = useState(String(stadium?.capacity || ''))
+  const [country_id, setCountryId] = useState(String(stadium?.country_id || ''))
+  const [city_id, setCityId] = useState(String(stadium?.city_id || ''))
+  const [image, setImage] = useState<File | null>(null)
+  const [preview, setPreview] = useState(stadium?.image || '')
+  const [levels, setLevels] = useState<StadiumLevelInput[]>(
+    stadium?.levels?.length ? stadium.levels.map(l => ({ id: l.id, name_en: l.name_en, name_ar: l.name_ar, desc_en: l.desc_en || '', desc_ar: l.desc_ar || '', seating_image: null })) : [EMPTY_LEVEL()]
+  )
+  const readOnly = mode === 'view'
 
-  const addStadium = (stadium) => {
-    const newStadium = {
-      ...stadium,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    };
-    setStadiums([newStadium, ...stadiums]);
-  };
+  const { data: countriesRes } = useGetCountriesQuery()
+  const [fetchCities, { data: citiesRes }] = useLazyGetCitiesQuery()
+  React.useEffect(() => { if (country_id) fetchCities(Number(country_id)) }, [country_id])
 
-  const updateStadium = (updatedStadium) => {
-    setStadiums(stadiums.map(s => s.id === updatedStadium.id ? { ...updatedStadium, updatedAt: new Date().toISOString() } : s));
-  };
+  const countries = countriesRes?.data || []
+  const cities = citiesRes?.data || []
 
-  const deleteStadium = (id) => {
-    setStadiums(stadiums.filter(s => s.id !== id));
-    setSelectedStadiums(selectedStadiums.filter(sid => sid !== id));
-  };
+  const setLevel = (i: number, k: keyof StadiumLevelInput, v: string | File | null) =>
+    setLevels(prev => prev.map((l, idx) => idx === i ? { ...l, [k]: v } : l))
 
-  const deleteMultiple = (ids) => {
-    setStadiums(stadiums.filter(s => !ids.includes(s.id)));
-    setSelectedStadiums([]);
-  };
-
-  const toggleSelection = (id) => {
-    setSelectedStadiums(prev => 
-      prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
-    );
-  };
-
-  return { stadiums, selectedStadiums, addStadium, updateStadium, deleteStadium, deleteMultiple, toggleSelection, setSelectedStadiums };
-};
-
-const StadiumForm = ({ stadium, onSave, onCancel, mode }) => {
-  const [formData, setFormData] = useState(stadium || {
-    name: '',
-    city: '',
-    country: '',
-    levels: []
-  });
-
-  const handleImageUpload = (levelIndex, e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const newLevels = [...formData.levels];
-        newLevels[levelIndex].image = reader.result;
-        setFormData({ ...formData, levels: newLevels });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const addLevel = () => {
-    setFormData({
-      ...formData,
-      levels: [...formData.levels, { id: Date.now().toString(), name: '', image: '' }]
-    });
-  };
-
-  const removeLevel = (index) => {
-    setFormData({
-      ...formData,
-      levels: formData.levels.filter((_, i) => i !== index)
-    });
-  };
-
-  const updateLevel = (index, field, value) => {
-    const newLevels = [...formData.levels];
-    newLevels[index][field] = value;
-    setFormData({ ...formData, levels: newLevels });
-  };
-
-  const handleSubmit = () => {
-    if (!formData.name || !formData.city || !formData.country) {
-      alert('Please fill in all required stadium fields');
-      return;
-    }
-    if (formData.levels.length === 0) {
-      alert('Please add at least one level');
-      return;
-    }
-    for (let level of formData.levels) {
-      if (!level.name || !level.image) {
-        alert('Please fill in all level fields and upload images');
-        return;
-      }
-    }
-    onSave(formData);
-  };
-
-  return (
-    <div className="min-h-screen bg-[#0a1929] p-6">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Building className="w-10 h-10 text-[#00ff88]" />
-            <h1 className="text-4xl font-bold text-white">
-              {mode === 'create' ? 'Add New Stadium' : 'Edit Stadium'}
-            </h1>
-          </div>
-          <p className="text-gray-400">Enter stadium details and configure levels</p>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-[#00ff88] mb-4">Stadium Information</h2>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Stadium Name *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors"
-                  placeholder="Enter stadium name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">City *</label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors"
-                  placeholder="Enter city"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Country *</label>
-                <input
-                  type="text"
-                  value={formData.country}
-                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors"
-                  placeholder="Enter country"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-[#00ff88]">Stadium Levels</h2>
-              <button
-                onClick={addLevel}
-                className="px-4 py-2 bg-[#00ff88] text-[#0a1929] font-semibold rounded-lg hover:bg-[#00dd77] transition-colors inline-flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Add Level
-              </button>
-            </div>
-
-            {formData.levels.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                No levels added yet. Click "Add Level" to get started.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {formData.levels.map((level, index) => (
-                  <div key={level.id} className="bg-[#0a1929] border border-[#1e3a52] rounded-lg p-4">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-1 space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">Level Name *</label>
-                          <input
-                            type="text"
-                            value={level.name}
-                            onChange={(e) => updateLevel(index, 'name', e.target.value)}
-                            className="w-full px-4 py-2 bg-[#111d2d] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors"
-                            placeholder="e.g., Level A, VIP Section"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">Seating Image *</label>
-                          <div className="flex gap-3">
-                            <label className="flex-1 cursor-pointer">
-                              <div className="px-4 py-2 bg-[#111d2d] border border-[#1e3a52] rounded-lg text-gray-300 hover:border-[#00ff88] transition-colors inline-flex items-center gap-2">
-                                <Upload className="w-4 h-4" />
-                                {level.image ? 'Change Image' : 'Upload Image'}
-                              </div>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleImageUpload(index, e)}
-                                className="hidden"
-                              />
-                            </label>
-                            {level.image && (
-                              <button
-                                onClick={() => updateLevel(index, 'image', '')}
-                                className="px-4 py-2 border border-red-600/50 text-red-400 rounded-lg hover:bg-red-600/10 transition-colors"
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      {level.image && (
-                        <div className="w-48 h-32 bg-[#111d2d] border border-[#1e3a52] rounded-lg overflow-hidden flex-shrink-0">
-                          <img
-                            src={level.image}
-                            alt={level.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                      <button
-                        onClick={() => removeLevel(index)}
-                        className="p-2 border border-red-600/50 text-red-400 rounded-lg hover:bg-red-600/10 transition-colors flex-shrink-0"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-3 justify-end">
-            <button
-              onClick={onCancel}
-              className="px-6 py-2.5 border border-[#1e3a52] text-gray-300 rounded-lg hover:bg-[#111d2d] transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              className="px-6 py-2.5 bg-[#00ff88] text-[#0a1929] font-semibold rounded-lg hover:bg-[#00dd77] transition-colors"
-            >
-              {mode === 'create' ? 'Create Stadium' : 'Save Changes'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const StadiumsList = ({ stadiums, selectedStadiums, onEdit, onDelete, onBulkDelete, toggleSelection, setSelectedStadiums, onAdd, searchTerm, setSearchTerm }) => {
-  return (
-    <div className="min-h-screen bg-[#0a1929] p-6">
-      <div>
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Building className="w-10 h-10 text-[#00ff88]" />
-            <h1 className="text-4xl font-bold text-white">Stadiums Management</h1>
-          </div>
-          <p className="text-gray-400">Manage stadiums and their seating levels</p>
-        </div>
-
-        {selectedStadiums.length > 0 && (
-          <div className="mb-4 bg-[#111d2d] border border-[#00ff88]/30 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-white font-medium">
-                {selectedStadiums.length} stadium{selectedStadiums.length !== 1 ? 's' : ''} selected
-              </span>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setSelectedStadiums([])}
-                  className="px-4 py-2 border border-[#1e3a52] text-gray-300 rounded-lg hover:bg-[#0a1929] transition-colors inline-flex items-center gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  Clear
-                </button>
-                <button
-                  onClick={onBulkDelete}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors inline-flex items-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete Selected
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg p-6 mb-6">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by name, city, or country..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff88] transition-colors"
-              />
-            </div>
-            <button
-              onClick={onAdd}
-              className="px-6 py-2.5 bg-[#00ff88] text-[#0a1929] font-semibold rounded-lg hover:bg-[#00dd77] transition-colors inline-flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Add Stadium
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {stadiums.length === 0 ? (
-            <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg p-12 text-center text-gray-500">
-              No stadiums found
-            </div>
-          ) : (
-            stadiums.map((stadium) => (
-              <div key={stadium.id} className="bg-[#111d2d] border border-[#1e3a52] rounded-lg p-6 hover:border-[#00ff88]/30 transition-colors">
-                <div className="flex items-start gap-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedStadiums.includes(stadium.id)}
-                    onChange={() => toggleSelection(stadium.id)}
-                    className="mt-1 w-5 h-5 bg-[#0a1929] border border-[#1e3a52] rounded checked:bg-[#00ff88] checked:border-[#00ff88]"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-2xl font-bold text-white mb-1">{stadium.name}</h3>
-                        <p className="text-gray-400">{stadium.city}, {stadium.country}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => onEdit(stadium)}
-                          className="p-2 border border-[#1e3a52] text-gray-300 rounded-lg hover:bg-[#0a1929] hover:text-[#00ff88] transition-colors"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(stadium.id, stadium.name)}
-                          className="p-2 border border-red-600/50 text-red-400 rounded-lg hover:bg-red-600/10 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-[#00ff88] mb-3">Seating Levels ({stadium.levels.length})</h4>
-                      <div className="grid grid-cols-4 gap-3">
-                        {stadium.levels.map((level) => (
-                          <div key={level.id} className="bg-[#0a1929] border border-[#1e3a52] rounded-lg overflow-hidden">
-                            <div className="aspect-video bg-gray-800 flex items-center justify-center">
-                              {level.image ? (
-                                <img src={level.image} alt={level.name} className="w-full h-full object-cover" />
-                              ) : (
-                                <Image className="w-8 h-8 text-gray-600" />
-                              )}
-                            </div>
-                            <div className="p-2">
-                              <p className="text-sm font-medium text-white text-center">{level.name}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="mt-6 text-gray-400 text-sm">
-          Showing {stadiums.length} stadium{stadiums.length !== 1 ? 's' : ''}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default function StadiumsManagement() {
-  const { stadiums, selectedStadiums, addStadium, updateStadium, deleteStadium, deleteMultiple, toggleSelection, setSelectedStadiums } = useStadiumsStore();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [view, setView] = useState('list');
-  const [editingStadium, setEditingStadium] = useState(null);
-
-  const filteredStadiums = useMemo(() => {
-    return stadiums.filter(stadium =>
-      stadium.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      stadium.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      stadium.country.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [stadiums, searchTerm]);
-
-  const handleSave = (stadiumData) => {
-    if (editingStadium) {
-      updateStadium({ ...stadiumData, id: editingStadium.id });
-    } else {
-      addStadium(stadiumData);
-    }
-    setView('list');
-    setEditingStadium(null);
-  };
-
-  const handleEdit = (stadium) => {
-    setEditingStadium(stadium);
-    setView('form');
-  };
-
-  const handleAdd = () => {
-    setEditingStadium(null);
-    setView('form');
-  };
-
-  const handleCancel = () => {
-    setView('list');
-    setEditingStadium(null);
-  };
-
-  const handleDelete = (id, name) => {
-    if (confirm(`Are you sure you want to delete ${name}?`)) {
-      deleteStadium(id);
-    }
-  };
-
-  const handleBulkDelete = () => {
-    if (confirm(`Are you sure you want to delete ${selectedStadiums.length} stadium(s)?`)) {
-      deleteMultiple(selectedStadiums);
-    }
-  };
-
-  if (view === 'form') {
-    return (
-      <StadiumForm
-        stadium={editingStadium}
-        onSave={handleSave}
-        onCancel={handleCancel}
-        mode={editingStadium ? 'edit' : 'create'}
-      />
-    );
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (readOnly) return
+    const base: CreateStadiumPayload = { name_en, name_ar, capacity, country_id: Number(country_id), city_id: Number(city_id), image, levels }
+    if (mode === 'create') await onSave(base)
+    else if (stadium) await onSave({ ...base, id: stadium.id } as UpdateStadiumPayload)
   }
 
   return (
-    <StadiumsList
-      stadiums={filteredStadiums}
-      selectedStadiums={selectedStadiums}
-      onEdit={handleEdit}
-      onDelete={handleDelete}
-      onBulkDelete={handleBulkDelete}
-      toggleSelection={toggleSelection}
-      setSelectedStadiums={setSelectedStadiums}
-      onAdd={handleAdd}
-      searchTerm={searchTerm}
-      setSearchTerm={setSearchTerm}
-    />
-  );
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] p-4">
+      <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-[#111d2d] border-b border-[#1e3a52] px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-white">{mode === 'create' ? 'Add Stadium' : mode === 'edit' ? 'Edit Stadium' : 'Stadium Details'}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[['Name (EN)', name_en, setNameEn], ['Name (AR)', name_ar, setNameAr]].map(([l, v, s]) => (
+              <div key={l as string}>
+                <label className="block text-sm font-medium text-gray-300 mb-1">{l as string} *</label>
+                <input value={v as string} onChange={e => (s as React.Dispatch<React.SetStateAction<string>>)(e.target.value)} readOnly={readOnly} required
+                  className="w-full px-3 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors" />
+              </div>
+            ))}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Capacity</label>
+              <input value={capacity} onChange={e => setCapacity(e.target.value)} readOnly={readOnly} type="number"
+                className="w-full px-3 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Country</label>
+              <select value={country_id} onChange={e => setCountryId(e.target.value)} disabled={readOnly}
+                className="w-full px-3 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors">
+                <option value="">Select country</option>
+                {countries.map(c => <option key={c.id} value={c.id}>{c.name_en}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">City</label>
+              <select value={city_id} onChange={e => setCityId(e.target.value)} disabled={readOnly}
+                className="w-full px-3 py-2 bg-[#0a1929] border border-[#1e3a52] rounded-lg text-white focus:outline-none focus:border-[#00ff88] transition-colors">
+                <option value="">Select city</option>
+                {cities.map(c => <option key={c.id} value={c.id}>{c.name_en}</option>)}
+              </select>
+            </div>
+          </div>
+          {!readOnly && (
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Stadium Image</label>
+              {preview && <img src={preview} alt="preview" className="w-20 h-20 rounded object-cover border border-[#1e3a52] mb-2" />}
+              <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) { setImage(f); setPreview(URL.createObjectURL(f)) } }}
+                className="w-full text-sm text-gray-300 file:mr-3 file:px-3 file:py-1.5 file:bg-[#1e3a52] file:text-white file:rounded file:border-0 file:text-sm" />
+            </div>
+          )}
+
+          {/* Levels */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-semibold text-[#00ff88]">Stadium Levels</h3>
+              {!readOnly && <button type="button" onClick={() => setLevels(p => [...p, EMPTY_LEVEL()])}
+                className="px-3 py-1 text-xs bg-[#1e3a52] text-white rounded hover:bg-[#2a4a62] transition-colors">+ Add Level</button>}
+            </div>
+            <div className="space-y-4">
+              {levels.map((lvl, i) => (
+                <div key={i} className="bg-[#0a1929] border border-[#1e3a52] rounded-lg p-4 relative">
+                  {!readOnly && levels.length > 1 && (
+                    <button type="button" onClick={() => setLevels(p => p.filter((_, idx) => idx !== i))}
+                      className="absolute top-3 right-3 text-red-400 hover:text-red-300 transition-colors"><X className="w-4 h-4" /></button>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    {[['Name (EN)', 'name_en'], ['Name (AR)', 'name_ar'], ['Desc (EN)', 'desc_en'], ['Desc (AR)', 'desc_ar']].map(([l, k]) => (
+                      <div key={k}>
+                        <label className="block text-xs font-medium text-gray-400 mb-1">{l}</label>
+                        <input value={(lvl[k as keyof StadiumLevelInput] as string) || ''} onChange={e => setLevel(i, k as keyof StadiumLevelInput, e.target.value)} readOnly={readOnly}
+                          className="w-full px-2 py-1.5 bg-[#111d2d] border border-[#1e3a52] rounded text-white text-sm focus:outline-none focus:border-[#00ff88] transition-colors" />
+                      </div>
+                    ))}
+                  </div>
+                  {!readOnly && (
+                    <div className="mt-3">
+                      <label className="block text-xs font-medium text-gray-400 mb-1">Seating Image</label>
+                      <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) setLevel(i, 'seating_image', f) }}
+                        className="w-full text-xs text-gray-300 file:mr-2 file:px-2 file:py-1 file:bg-[#1e3a52] file:text-white file:rounded file:border-0 file:text-xs" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {!readOnly && (
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-[#1e3a52] text-gray-300 rounded-lg hover:bg-[#1e3a52] transition-colors">Cancel</button>
+              <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-[#00ff88] text-[#0a1929] font-semibold rounded-lg hover:bg-[#00dd77] disabled:opacity-60 transition-colors">{saving ? 'Saving...' : 'Save'}</button>
+            </div>
+          )}
+        </form>
+      </div>
+    </div>
+  )
+}
+
+export default function StadiumsManagement() {
+  const [page, setPage] = useState(1)
+  const [modal, setModal] = useState<{ open: boolean; mode: 'create' | 'edit' | 'view'; stadium: Stadium | null }>({ open: false, mode: 'create', stadium: null })
+
+  const { data, isLoading, isFetching, isError, refetch } = useGetStadiumsQuery({ page, per_page: 10 })
+  const [createStadium, { isLoading: creating }] = useCreateStadiumMutation()
+  const [updateStadium, { isLoading: updating }] = useUpdateStadiumMutation()
+  const [deleteStadium] = useDeleteStadiumMutation()
+
+  const stadiums = data?.data.data || []
+  const lastPage = data?.data.last_page || 1
+  const total = data?.data.total || 0
+
+  const handleSave = async (payload: CreateStadiumPayload | UpdateStadiumPayload) => {
+    try {
+      if (modal.mode === 'create') await createStadium(payload as CreateStadiumPayload).unwrap()
+      else if (modal.stadium) await updateStadium(payload as UpdateStadiumPayload).unwrap()
+      setModal({ open: false, mode: 'create', stadium: null })
+    } catch (err) { console.error(err) }
+  }
+
+  const handleDelete = async (s: Stadium) => {
+    if (!confirm(`Delete stadium "${s.name_en}"?`)) return
+    try { await deleteStadium(s.id).unwrap() } catch (err) { console.error(err) }
+  }
+
+  return (
+    <div className="p-6 min-h-screen">
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-1">
+          <Building2 className="w-8 h-8 text-[#00ff88]" />
+          <h1 className="text-3xl font-bold text-white">Stadiums</h1>
+        </div>
+        <p className="text-gray-400">Manage stadiums and their seating levels</p>
+      </div>
+
+      <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg p-4 mb-4 flex justify-end">
+        <button onClick={() => setModal({ open: true, mode: 'create', stadium: null })}
+          className="flex items-center gap-2 px-4 py-2 bg-[#00ff88] text-[#0a1929] font-semibold rounded-lg hover:bg-[#00dd77] text-sm transition-colors">
+          <Plus className="w-4 h-4" /> Add Stadium
+        </button>
+      </div>
+
+      <div className="bg-[#111d2d] border border-[#1e3a52] rounded-lg overflow-hidden">
+        {isError && <div className="p-8 text-center text-red-400">Failed to load. <button onClick={() => refetch()} className="underline">Retry</button></div>}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-[#0a1929] border-b border-[#1e3a52]">
+              <tr>{['Image', 'Name (EN)', 'Name (AR)', 'Capacity', 'Country', 'City', 'Levels', 'Actions'].map(h => (
+                <th key={h} className="px-4 py-3 text-left font-semibold text-gray-300">{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody className="divide-y divide-[#1e3a52]">
+              {(isLoading || isFetching) && Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}><td colSpan={8} className="px-4 py-3"><div className="h-4 bg-[#1e3a52] rounded animate-pulse" /></td></tr>
+              ))}
+              {!isLoading && !isFetching && stadiums.map(s => (
+                <tr key={s.id} className="hover:bg-[#0a1929]/50 transition-colors">
+                  <td className="px-4 py-3">
+                    {s.image ? <img src={s.image} alt={s.name_en} className="w-10 h-10 rounded object-cover" /> : <div className="w-10 h-10 rounded bg-[#1e3a52]" />}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-white">{s.name_en}</td>
+                  <td className="px-4 py-3 text-gray-300">{s.name_ar}</td>
+                  <td className="px-4 py-3 text-gray-300">{s.capacity?.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-gray-300">{s.country?.name_en || '—'}</td>
+                  <td className="px-4 py-3 text-gray-300">{s.city?.name_en || '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium">{s.levels?.length || 0}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setModal({ open: true, mode: 'edit', stadium: s })} className="p-1.5 text-[#00ff88] hover:bg-[#00ff88]/10 rounded transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDelete(s)} className="p-1.5 text-red-400 hover:bg-red-400/10 rounded transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!isLoading && !isFetching && stadiums.length === 0 && !isError && (
+                <tr><td colSpan={8} className="px-4 py-12 text-center text-gray-400">No stadiums found</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {lastPage > 1 && (
+          <div className="px-4 py-3 border-t border-[#1e3a52] flex items-center justify-between">
+            <span className="text-sm text-gray-400">{total} total</span>
+            <div className="flex items-center gap-2">
+              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="p-1.5 text-gray-400 hover:text-white disabled:opacity-30 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+              <span className="text-sm text-gray-300">Page {page} of {lastPage}</span>
+              <button disabled={page >= lastPage} onClick={() => setPage(p => p + 1)} className="p-1.5 text-gray-400 hover:text-white disabled:opacity-30 transition-colors"><ChevronRight className="w-4 h-4" /></button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {modal.open && (
+        <StadiumForm stadium={modal.stadium} mode={modal.mode}
+          onClose={() => setModal({ open: false, mode: 'create', stadium: null })}
+          onSave={handleSave} saving={creating || updating} />
+      )}
+    </div>
+  )
 }

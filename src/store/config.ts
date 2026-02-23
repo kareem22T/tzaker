@@ -1,1 +1,1 @@
-export const BASE_URL = 'https://watchit-test.clicksegypt.net/api'
+export const BASE_URL = 'https://testtest.instasports.org/api'

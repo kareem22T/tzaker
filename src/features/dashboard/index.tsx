@@ -25,104 +25,9 @@ import {
   Cell,
 } from 'recharts';
 
-// Static data for the dashboard
-const dashboardStats = {
-  totalUsers: 2847,
-  newUsersThisMonth: 245,
-  usersByGender: [
-    { gender: 'Male', count: 1698, percentage: 59.6 },
-    { gender: 'Female', count: 1032, percentage: 36.3 },
-    { gender: 'Other', count: 117, percentage: 4.1 },
-  ],
-  usersByCountry: [
-    { country: 'Egypt', count: 1523, flag: '🇪🇬' },
-    { country: 'Saudi Arabia', count: 542, flag: '🇸🇦' },
-    { country: 'UAE', count: 387, flag: '🇦🇪' },
-    { country: 'Qatar', count: 245, flag: '🇶🇦' },
-    { country: 'Kuwait', count: 150, flag: '🇰🇼' },
-  ],
-  totalSuppliers: 48,
-  totalSports: 12,
-  totalStadiums: 25,
-  totalClubs: 64,
-  totalTickets: 8547,
-  availableTickets: 3421,
-  soldTickets: 5126,
-  totalRequests: 1842,
-  pendingRequests: 284,
-  approvedRequests: 1398,
-  rejectedRequests: 160,
-};
+import { useGetDashboardQuery } from '../../store/api/dashboardApi';
 
-const recentRequests = [
-  {
-    id: '1',
-    userName: 'Ahmed Hassan',
-    userEmail: 'ahmed.hassan@example.com',
-    match: 'Manchester United vs Real Madrid',
-    ticketCount: 2,
-    totalAmount: 300,
-    status: 'pending',
-    requestedAt: '2024-01-22T15:30:00Z',
-  },
-  {
-    id: '2',
-    userName: 'Sarah Johnson',
-    userEmail: 'sarah.j@example.com',
-    match: 'FC Barcelona vs Bayern Munich',
-    ticketCount: 4,
-    totalAmount: 480,
-    status: 'approved',
-    requestedAt: '2024-01-22T14:15:00Z',
-  },
-  {
-    id: '3',
-    userName: 'Mohammed Al-Rashid',
-    userEmail: 'mohammed.rashid@example.com',
-    match: 'Liverpool FC vs Manchester United',
-    ticketCount: 1,
-    totalAmount: 150,
-    status: 'pending',
-    requestedAt: '2024-01-22T13:45:00Z',
-  },
-  {
-    id: '4',
-    userName: 'Elena Rodriguez',
-    userEmail: 'elena.r@example.com',
-    match: 'Real Madrid vs FC Barcelona',
-    ticketCount: 3,
-    totalAmount: 450,
-    status: 'rejected',
-    requestedAt: '2024-01-22T12:20:00Z',
-  },
-  {
-    id: '5',
-    userName: 'Yuki Tanaka',
-    userEmail: 'yuki.t@example.com',
-    match: 'Bayern Munich vs Liverpool FC',
-    ticketCount: 2,
-    totalAmount: 280,
-    status: 'approved',
-    requestedAt: '2024-01-22T11:00:00Z',
-  },
-];
-
-const monthlyTicketSales = [
-  { month: 'Jan', sold: 456, revenue: 68400 },
-  { month: 'Feb', sold: 523, revenue: 78450 },
-  { month: 'Mar', sold: 612, revenue: 91800 },
-  { month: 'Apr', sold: 589, revenue: 88350 },
-  { month: 'May', sold: 678, revenue: 101700 },
-  { month: 'Jun', sold: 734, revenue: 110100 },
-];
-
-const topMatches = [
-  { match: 'Man United vs Real Madrid', tickets: 487, revenue: 73050 },
-  { match: 'Barcelona vs Bayern Munich', tickets: 456, revenue: 68400 },
-  { match: 'Liverpool vs Man United', tickets: 423, revenue: 63450 },
-  { match: 'Real Madrid vs Barcelona', tickets: 398, revenue: 59700 },
-  { match: 'Bayern vs Liverpool', tickets: 367, revenue: 55050 },
-];
+// Dashboard is fully dynamic — static fixtures removed; UI shows empty/no-data states when API returns nothing.
 
 const COLORS = ['#00ff88', '#0ea5e9', '#a855f7'];
 
@@ -167,13 +72,60 @@ export default function Dashboard() {
     }
   };
 
+  // --- Dashboard API (dynamic data)
+  const { data: dashboardResp, isLoading, isError, refetch } = useGetDashboardQuery();
+  const api = dashboardResp?.data;
+
+  // Derived dashboard values (API-driven; default to 0 / empty arrays when missing)
+  const dashboardStats = {
+    totalUsers: Number(api?.overview_stats?.total_users?.value) || 0,
+    newUsersThisMonth: 0,
+    totalTickets: Number(api?.overview_stats?.total_tickets?.value) || 0,
+    availableTickets: 0,
+    soldTickets: 0,
+    totalRequests: api?.requests_statistics
+      ? Number(api.requests_statistics.pending_requests?.count || 0) + Number(api.requests_statistics.approved_requests?.count || 0) + Number(api.requests_statistics.registered_engagements?.count || 0)
+      : 0,
+    pendingRequests: Number(api?.requests_statistics?.pending_requests?.count) || 0,
+    approvedRequests: Number(api?.requests_statistics?.approved_requests?.count) || 0,
+    rejectedRequests: 0,
+    totalStadiums: Number(api?.overview_stats?.total_stadiums?.value) || 0,
+    totalClubs: Number(api?.metadata?.clubs) || 0,
+    totalSuppliers: Number(api?.metadata?.suppliers) || 0,
+    totalSports: Number(api?.metadata?.sports) || 0,
+    usersByGender: api?.users_by_gender?.distribution?.map((d) => ({ gender: String(d.gender).charAt(0).toUpperCase() + String(d.gender).slice(1), count: Number(d.count) || 0, percentage: Number(d.percentage) || 0 })) || [],
+    usersByCountry: api?.users_by_country?.countries?.map((c) => ({ country: c.name, count: Number(c.count) || 0, flag: '' })) || [],
+  };
+
+  const monthlyTicketSales = api?.monthly_ticket_sales?.data?.map((m) => ({ month: m.month, sold: Number(m.tickets_sold) || 0, revenue: Number(m.revenue) || 0 })) || [];
+
+  const recentRequests = api?.recent_booking_requests?.bookings?.map((b, idx) => ({
+    id: b.id || `api-${idx}`,
+    userName: b.user_name || b.customer_name || b.customer || '',
+    userEmail: b.user_email || b.email || '',
+    match: b.match || b.event || '',
+    ticketCount: Number(b.tickets || b.ticket_count) || 0,
+    totalAmount: Number(b.total_amount || b.amount) || 0,
+    status: b.status || 'pending',
+    requestedAt: b.requested_at || b.created_at || '',
+  })) || [];
+
+  const topMatches = api?.top_matches?.matches?.map((m) => ({ match: m.match || m.title || m.name || '', tickets: Number(m.tickets || m.total_tickets) || 0, revenue: Number(m.revenue || m.total_revenue) || 0 })) || []; 
+
   return (
     <div className="min-h-screen bg-[#0a1929] p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-gray-400">Welcome back! Here's your platform overview.</p>
+          <p className="text-gray-400">{api?.welcome_message || "Welcome back! Here's your platform overview."}</p>
+          {isLoading && <div className="text-sm text-gray-400 mt-2">Loading dashboard...</div>}
+          {isError && (
+            <div className="text-sm text-red-400 mt-2 flex items-center gap-2">
+              <span>Failed to load dashboard data.</span>
+              <button onClick={() => refetch()} className="underline">Retry</button>
+            </div>
+          )}
         </div>
 
         {/* Main Stats Grid */}
@@ -248,44 +200,48 @@ export default function Dashboard() {
               <h3 className="text-lg font-semibold text-white">Users by Gender</h3>
               <p className="text-sm text-gray-400 mt-1">Distribution of registered users</p>
             </div>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={dashboardStats.usersByGender}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ payload, percent }) =>
-                    `${payload.gender}: ${(percent * 100).toFixed(0)}%`
-                  }
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="count"
-                >
-                  {dashboardStats.usersByGender.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            {dashboardStats.usersByGender.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={dashboardStats.usersByGender}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ payload, percent }) => `${payload.gender}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {dashboardStats.usersByGender.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#111d2d',
+                        border: '1px solid #1e3a52',
+                        borderRadius: '8px',
+                        color: '#fff',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="grid grid-cols-3 gap-2 mt-4">
+                  {dashboardStats.usersByGender.map((item, index) => (
+                    <div key={item.gender} className="text-center p-2 bg-[#0a1929] rounded-lg border border-[#1e3a52]">
+                      <p className="text-xs text-gray-400">{item.gender}</p>
+                      <p className="text-lg font-bold" style={{ color: COLORS[index] }}>
+                        {item.count}
+                      </p>
+                    </div>
                   ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#111d2d',
-                    border: '1px solid #1e3a52',
-                    borderRadius: '8px',
-                    color: '#fff',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="grid grid-cols-3 gap-2 mt-4">
-              {dashboardStats.usersByGender.map((item, index) => (
-                <div key={item.gender} className="text-center p-2 bg-[#0a1929] rounded-lg border border-[#1e3a52]">
-                  <p className="text-xs text-gray-400">{item.gender}</p>
-                  <p className="text-lg font-bold" style={{ color: COLORS[index] }}>
-                    {item.count}
-                  </p>
                 </div>
-              ))}
-            </div>
+              </>
+            ) : (
+              <div className="min-h-[300px] flex items-center justify-center text-gray-400">No gender distribution data</div>
+            )} 
           </div>
 
           {/* Users by Country */}
@@ -295,28 +251,32 @@ export default function Dashboard() {
               <p className="text-sm text-gray-400 mt-1">Top 5 countries</p>
             </div>
             <div className="space-y-4">
-              {dashboardStats.usersByCountry.map((item) => {
-                const percentage = ((item.count / dashboardStats.totalUsers) * 100).toFixed(1);
-                return (
-                  <div key={item.country}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{item.flag}</span>
-                        <span className="text-sm font-medium text-white">{item.country}</span>
+              {dashboardStats.usersByCountry.length > 0 ? (
+                dashboardStats.usersByCountry.map((item) => {
+                  const percentage = dashboardStats.totalUsers > 0 ? ((item.count / dashboardStats.totalUsers) * 100).toFixed(1) : '0.0';
+                  return (
+                    <div key={item.country}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{item.flag}</span>
+                          <span className="text-sm font-medium text-white">{item.country}</span>
+                        </div>
+                        <span className="text-sm font-bold text-[#00ff88]">{item.count}</span>
                       </div>
-                      <span className="text-sm font-bold text-[#00ff88]">{item.count}</span>
+                      <div className="w-full bg-[#0a1929] rounded-full h-2">
+                        <div
+                          className="bg-[#00ff88] h-2 rounded-full transition-all"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{percentage}% of total users</p>
                     </div>
-                    <div className="w-full bg-[#0a1929] rounded-full h-2">
-                      <div
-                        className="bg-[#00ff88] h-2 rounded-full transition-all"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">{percentage}% of total users</p>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })
+              ) : (
+                <div className="text-center text-gray-400 py-6">No country data</div>
+              )}
+            </div> 
           </div>
         </div>
 
@@ -326,25 +286,29 @@ export default function Dashboard() {
             <h3 className="text-lg font-semibold text-white">Monthly Ticket Sales</h3>
             <p className="text-sm text-gray-400 mt-1">Tickets sold and revenue over time</p>
           </div>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={monthlyTicketSales} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e3a52" />
-              <XAxis dataKey="month" stroke="#9ca3af" />
-              <YAxis yAxisId="left" stroke="#9ca3af" />
-              <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#111d2d',
-                  border: '1px solid #1e3a52',
-                  borderRadius: '8px',
-                  color: '#fff',
-                }}
-              />
-              <Legend />
-              <Bar yAxisId="left" dataKey="sold" fill="#00ff88" radius={[8, 8, 0, 0]} name="Tickets Sold" />
-              <Bar yAxisId="right" dataKey="revenue" fill="#0ea5e9" radius={[8, 8, 0, 0]} name="Revenue ($)" />
-            </BarChart>
-          </ResponsiveContainer>
+          {monthlyTicketSales.length > 0 ? (
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={monthlyTicketSales} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e3a52" />
+                <XAxis dataKey="month" stroke="#9ca3af" />
+                <YAxis yAxisId="left" stroke="#9ca3af" />
+                <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#111d2d',
+                    border: '1px solid #1e3a52',
+                    borderRadius: '8px',
+                    color: '#fff',
+                  }}
+                />
+                <Legend />
+                <Bar yAxisId="left" dataKey="sold" fill="#00ff88" radius={[8, 8, 0, 0]} name="Tickets Sold" />
+                <Bar yAxisId="right" dataKey="revenue" fill="#0ea5e9" radius={[8, 8, 0, 0]} name="Revenue ($)" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="min-h-[200px] flex items-center justify-center text-gray-400">No sales data</div>
+          )} 
         </div>
 
         {/* Request Status Overview */}
@@ -409,27 +373,33 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentRequests.map((request) => (
-                    <tr key={request.id} className="border-b border-[#1e3a52] hover:bg-[#0a1929] transition-colors">
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="text-sm font-medium text-white">{request.userName}</p>
-                          <p className="text-xs text-gray-400">{request.userEmail}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-300 max-w-xs">
-                        <div className="line-clamp-2">{request.match}</div>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-bold text-white">{request.ticketCount}</td>
-                      <td className="px-6 py-4 text-sm font-bold text-[#00ff88]">${request.totalAmount}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
-                          {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                        </span>
-                      </td>
+                  {recentRequests.length > 0 ? (
+                    recentRequests.map((request) => (
+                      <tr key={request.id} className="border-b border-[#1e3a52] hover:bg-[#0a1929] transition-colors">
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="text-sm font-medium text-white">{request.userName}</p>
+                            <p className="text-xs text-gray-400">{request.userEmail}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-300 max-w-xs">
+                          <div className="line-clamp-2">{request.match}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-bold text-white">{request.ticketCount}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-[#00ff88]">${request.totalAmount}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                            {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-gray-400">No recent booking requests</td>
                     </tr>
-                  ))}
-                </tbody>
+                  )}
+                </tbody> 
               </table>
             </div>
           </div>
@@ -439,22 +409,26 @@ export default function Dashboard() {
             <h3 className="text-lg font-semibold text-white mb-4">Top Matches</h3>
             <p className="text-sm text-gray-400 mb-4">By ticket sales</p>
             <div className="space-y-3">
-              {topMatches.map((match, index) => (
-                <div
-                  key={index}
-                  className="p-3 bg-[#0a1929] rounded-lg border border-[#1e3a52] hover:border-[#00ff88]/50 transition-all"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <p className="text-sm font-medium text-white line-clamp-2 flex-1">{match.match}</p>
-                    <span className="text-xs font-bold text-[#00ff88] ml-2">#{index + 1}</span>
+              {topMatches.length > 0 ? (
+                topMatches.map((match, index) => (
+                  <div
+                    key={index}
+                    className="p-3 bg-[#0a1929] rounded-lg border border-[#1e3a52] hover:border-[#00ff88]/50 transition-all"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <p className="text-sm font-medium text-white line-clamp-2 flex-1">{match.match}</p>
+                      <span className="text-xs font-bold text-[#00ff88] ml-2">#{index + 1}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-400">{match.tickets} tickets</span>
+                      <span className="text-[#00ff88] font-semibold">${match.revenue.toLocaleString()}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400">{match.tickets} tickets</span>
-                    <span className="text-[#00ff88] font-semibold">${match.revenue.toLocaleString()}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))
+              ) : (
+                <div className="py-8 text-center text-gray-400">No top matches</div>
+              )}
+            </div> 
           </div>
         </div>
       </div>

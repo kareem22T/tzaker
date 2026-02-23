@@ -12,15 +12,15 @@ const LayoutContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // React.useEffect(() => {
-  //   // If auth finished loading and there's no token, redirect to sign-in
-  //   if (!auth.loading && !auth.token) {
-  //     // Avoid redirect loop if already on auth pages
-  //     if (!location.pathname.startsWith("/signin") && !location.pathname.startsWith("/signup")) {
-  //       navigate("/signin");
-  //     }
-  //   }
-  // }, [auth.loading, auth.token, navigate, location.pathname]);
+  React.useEffect(() => {
+    // If auth finished loading and there's no token, redirect to sign-in
+    if (!auth.loading && !auth.token) {
+      // Avoid redirect loop if already on auth pages
+      if (!location.pathname.startsWith("/signin") && !location.pathname.startsWith("/signup")) {
+        navigate("/signin");
+      }
+    }
+  }, [auth.loading, auth.token, navigate, location.pathname]);
 
   if (auth.loading && !auth.token) {
     return (

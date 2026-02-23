@@ -1,16 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react';
-
-// Mock Auth Context
-const useAuth = () => ({
-  signIn: async (email: string, password: string) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    if (email && password) {
-      return { success: true };
-    }
-    return { success: false, message: 'Invalid credentials' };
-  }
-});
+import { useNavigate } from 'react-router';
+import { useAuth } from '../../context/AuthContext';
 
 const SignInForm = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -20,6 +11,7 @@ const SignInForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const auth = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +20,7 @@ const SignInForm = () => {
     const res = await auth.signIn(email, password);
     setLoading(false);
     if (res.success) {
-      alert('Sign in successful!');
+      navigate('/');
     } else {
       setError(res.message || 'Sign in failed');
     }

@@ -11,7 +11,7 @@ export const dashboardApi = createApi({
   baseQuery: baseQueryWithAuth,
   endpoints: (builder) => ({
     getDashboard: builder.query<DashboardResponse, void>({
-      query: () => ({ url: '/dashboard' }),
+      query: () => ({ url: '/admin/dashboard' }),
     }),
   }),
 })

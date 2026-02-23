@@ -1,96 +1,132 @@
 import { createApi } from '@reduxjs/toolkit/query/react'
 import { baseQueryWithAuth } from './baseQuery'
 
-// Types
-export interface Setting {
-  id?: number
-  key: string
-  value: string | null
-  value_ar?: string | null
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface ContentPage {
+  id: number
   type: string
-  group: string
-  created_at?: string
-  updated_at?: string
+  content_en: string
+  content_ar: string
 }
 
-export interface StaticPage {
-  id?: number
-  key: string
-  title: string
-  title_ar?: string
-  content: string
-  content_ar?: string
-  is_published: boolean
-  created_at?: string
-  updated_at?: string
+export interface ContactInfo {
+  id: number
+  email: string
+  phone: string
+  address_en: string
+  address_ar: string
+  country_id: number
+  working_hours_en: string
+  working_hours_ar: string
+  response_time_en: string
+  response_time_ar: string
+  status?: string | number
+  country?: { id: number; name_en: string; name_ar: string }
 }
 
-export interface SettingsResponse {
-  success: boolean
-  data: Setting[]
+export interface HeroSection {
+  id: number
+  title_en: string
+  title_ar: string
+  description_en: string
+  description_ar: string
+  button_text_en: string
+  button_text_ar: string
+  button_url: string
+  image?: string
+  is_active: boolean
+  cookie_policy?: ContentPage
+  terms?: ContentPage
+  privacy_policy?: ContentPage
+  contact?: ContactInfo
 }
 
-export interface StaticPageResponse {
-  success: boolean
-  data: StaticPage
+interface HeroSectionResponse {
+  status: number
+  message: string
+  data: HeroSection
 }
 
-export interface BulkSettingsRequest {
-  settings: Array<{
-    key: string
-    value: string
-    value_ar?: string
-    type: string
-    group: string
-  }>
+interface GenericResponse {
+  status: number
+  message: string
+  data?: unknown
 }
 
-// API Slice
+export interface UpdateHeroPayload {
+  title_en: string
+  title_ar: string
+  description_en: string
+  description_ar: string
+  button_text_en: string
+  button_text_ar: string
+  button_url: string
+}
+
+export interface UpdateSettingPayload {
+  id: number
+  content_en: string
+  content_ar: string
+}
+
+export interface UpdateContactPayload {
+  email: string
+  phone: string
+  address_en: string
+  address_ar: string
+  country_id: number
+  working_hours_en: string
+  working_hours_ar: string
+  response_time_en: string
+  response_time_ar: string
+}
+
+// ── API slice ─────────────────────────────────────────────────────────────────
+
 export const siteContentApi = createApi({
   reducerPath: 'siteContentApi',
   baseQuery: baseQueryWithAuth,
-  tagTypes: ['Settings', 'StaticPage'],
+  tagTypes: ['SiteContent'],
   endpoints: (builder) => ({
-    // Get settings by group
-    getSettingsByGroup: builder.query<SettingsResponse, string>({
-      query: (group) => `/dashboard/settings?group=${group}`,
-      providesTags: (result, error, group) => [{ type: 'Settings', id: group }],
+    getHeroSection: builder.query<HeroSectionResponse, void>({
+      query: () => '/admin/hero-sections',
+      providesTags: [{ type: 'SiteContent', id: 'HERO' }],
     }),
 
-    // Bulk update settings
-    bulkUpdateSettings: builder.mutation<SettingsResponse, BulkSettingsRequest>({
-      query: (body) => ({
-        url: '/dashboard/settings/bulk',
-        method: 'POST',
-        body,
-      }),
-      invalidatesTags: (result, error, arg) => {
-        const groups = [...new Set(arg.settings.map(s => s.group))]
-        return groups.map(group => ({ type: 'Settings', id: group }))
+    updateHeroSection: builder.mutation<GenericResponse, UpdateHeroPayload>({
+      query: (body) => {
+        const fd = new FormData()
+        Object.entries(body).forEach(([k, v]) => fd.append(k, String(v)))
+        return { url: '/admin/hero-sections/update/1', method: 'POST', body: fd }
       },
+      invalidatesTags: [{ type: 'SiteContent', id: 'HERO' }],
     }),
 
-    // Get static page by key
-    getStaticPage: builder.query<StaticPageResponse, string>({
-      query: (key) => `/dashboard/static-pages/${key}`,
-      providesTags: (result, error, key) => [{ type: 'StaticPage', id: key }],
+    updateSetting: builder.mutation<GenericResponse, UpdateSettingPayload>({
+      query: ({ id, content_en, content_ar }) => {
+        const fd = new FormData()
+        fd.append('content_en', content_en)
+        fd.append('content_ar', content_ar)
+        return { url: `/admin/setting/update/${id}`, method: 'POST', body: fd }
+      },
+      invalidatesTags: [{ type: 'SiteContent', id: 'HERO' }],
     }),
 
-    // Update static page
-    updateStaticPage: builder.mutation<StaticPageResponse, Partial<StaticPage> & { key: string }>({
-      query: (body) => ({
-        url: '/dashboard/static-pages',
-        method: 'POST',
-        body,
-      }),
-      invalidatesTags: (result, error, arg) => [{ type: 'StaticPage', id: arg.key }],
+    updateContact: builder.mutation<GenericResponse, UpdateContactPayload>({
+      query: (body) => {
+        const fd = new FormData()
+        Object.entries(body).forEach(([k, v]) => fd.append(k, String(v)))
+        return { url: '/admin/contact/update/1', method: 'POST', body: fd }
+      },
+      invalidatesTags: [{ type: 'SiteContent', id: 'HERO' }],
     }),
   }),
 })
 
 export const {
-  useGetSettingsByGroupQuery,
-  useBulkUpdateSettingsMutation,
-  useGetStaticPageQuery,
-  useUpdateStaticPageMutation,
+  useGetHeroSectionQuery,
+  useUpdateHeroSectionMutation,
+  useUpdateSettingMutation,
+  useUpdateContactMutation,
 } = siteContentApi
